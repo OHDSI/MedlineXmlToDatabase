@@ -20,6 +20,11 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
+/**
+ * The main class that parses the command line arguments, and calls either MedlineAnalyserMain or MedlineParserMain
+ * @author MSCHUEMI
+ *
+ */
 public class MainClass {
 
 	private static enum Action {

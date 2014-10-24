@@ -34,13 +34,18 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * In this class, we do the actual work of analyzing a single XML document.
+ * 
+ * @author MSCHUEMI
+ * 
+ */
 public class MedlineCitationAnalyser {
 
 	private static String				MEDLINE_CITATION	= "MedlineCitation";
 	private static String				ORDER_POSTFIX		= "_Order";
 	private Map<String, Set<String>>	table2Fields		= new HashMap<String, Set<String>>();
 	private Map<String, VariableType>	field2VariableType	= new HashMap<String, VariableType>();
-	private String						dataSourceType;
 
 	public MedlineCitationAnalyser() {
 		table2Fields.put(MEDLINE_CITATION, new HashSet<String>());
@@ -112,30 +117,28 @@ public class MedlineCitationAnalyser {
 		}
 	}
 
-	public String getSQL(String dataSourceType) {
-		this.dataSourceType = dataSourceType;
-		StringBuilder sql = new StringBuilder();
-
+	public void createTables(ConnectionWrapper connectionWrapper) {
 		List<String> sortedTables = new ArrayList<String>(table2Fields.keySet());
 		Collections.sort(sortedTables);
 		for (String table : sortedTables) {
-			sql.append("CREATE TABLE " + table + " (\n");
 
 			List<String> sortedFields = new ArrayList<String>(table2Fields.get(table));
 			Collections.sort(sortedFields);
-
+			List<VariableType> types = new ArrayList<VariableType>(sortedFields.size());
+			for (String field : sortedFields)
+				types.add(field2VariableType.get(concatenate(table, field)));
+			int index = sortedFields.indexOf("");
+			if (index != -1)
+				sortedFields.set(index, "Value");
 			List<String> primaryKey = new ArrayList<String>();
 			primaryKey.add("PMID");
 			primaryKey.add("PMID_Version");
-			for (String field : sortedFields) {
-				sql.append("  " + (field.length() == 0 ? "Value" : field) + " " + field2VariableType.get(concatenate(table, field)) + ",\n");
+			for (String field : sortedFields)
 				if (field.endsWith(ORDER_POSTFIX))
 					primaryKey.add(field);
-			}
-			sql.append("  PRIMARY KEY (" + StringUtilities.join(primaryKey, ",") + ")\n");
-			sql.append(");\n\n");
+
+			connectionWrapper.createTableUsingVariableTypes(table, sortedFields, types, primaryKey);
 		}
-		return Abbreviator.abbreviate(sql.toString());
 	}
 
 	private void analyseNode(Node node, String name, String tableName) {
@@ -200,7 +203,7 @@ public class MedlineCitationAnalyser {
 			return post;
 	}
 
-	private class VariableType {
+	public class VariableType {
 		public boolean	isNumeric	= true;
 		public int		maxLength	= 0;
 
@@ -212,36 +215,5 @@ public class MedlineCitationAnalyser {
 		public VariableType() {
 		};
 
-		public String toString() {
-			if (dataSourceType.toUpperCase().equals("MYSQL")) {
-				if (isNumeric)
-					return "INT";
-				else if (maxLength > 255)
-					return "TEXT";
-				else
-					return "VARCHAR(255)";
-			} else if (dataSourceType.toUpperCase().equals("MSSQL")) {
-				if (isNumeric) {
-					if (maxLength < 10)
-						return "INT";
-					else
-						return "BIGINT";
-				} else if (maxLength > 255)
-					return "VARCHAR(MAX)";
-				else
-					return "VARCHAR(255)";
-			} else if (dataSourceType.toUpperCase().equals("POSTGRESQL")) {
-				if (isNumeric) {
-					if (maxLength < 10)
-						return "INT";
-					else
-						return "BIGINT";
-				} else if (maxLength > 255)
-					return "TEXT";
-				else
-					return "VARCHAR(255)";
-			} else
-				throw new RuntimeException("Unknown datasource type " + dataSourceType);
-		}
 	}
 }

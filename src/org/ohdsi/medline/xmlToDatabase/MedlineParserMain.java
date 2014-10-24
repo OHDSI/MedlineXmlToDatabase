@@ -20,23 +20,22 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import org.ohdsi.databases.DBConnector;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.utilities.files.IniFile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * Main parser class. Here's where we iterate over all xml.gz files
+ * 
+ * @author MSCHUEMI
+ *
+ */
 public class MedlineParserMain {
 
 	private MedlineCitationParser	medlineCitationParser;
 	private PmidToDate				pmidToDate;
-	private Connection				connection;
 
 	public static void main(String[] args) {
 		IniFile iniFile = new IniFile(args[0]);
@@ -47,36 +46,17 @@ public class MedlineParserMain {
 	}
 
 	private void parseFolder(String folder, String server, String schema, String domain, String user, String password, String dateSourceType) {
-		DbType dbType = new DbType(dateSourceType);
-		connection = DBConnector.connect(server, domain, user, password,dbType);
-		connectToSchema(schema, new DbType(dateSourceType));
+		ConnectionWrapper connectionWrapper = new ConnectionWrapper(server, domain, user, password, new DbType(dateSourceType));
+		connectionWrapper.use(schema);
 
-		medlineCitationParser = new MedlineCitationParser(connection, schema, dbType);
-		pmidToDate = new PmidToDate(connection, dateSourceType);
+		medlineCitationParser = new MedlineCitationParser(connectionWrapper, schema);
+		pmidToDate = new PmidToDate(connectionWrapper);
 
 		XMLFileIterator iterator = new XMLFileIterator(folder);
 		while (iterator.hasNext()) {
 			Document document = iterator.next();
 			analyse(document);
 			pmidToDate.insertDates(document);
-		}
-	}
-
-	private void connectToSchema(String schema, DbType dbType) {
-		String sql = null;
-		try {
-			if (dbType.equals(DbType.ORACLE))
-				sql = "ALTER SESSION SET current_schema = " + schema;
-			else if (dbType.equals(DbType.POSTGRESQL))
-				sql = "SET search_path TO " + schema;
-			else
-				sql = "USE " + schema;
-			Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-			statement.execute(sql);
-			statement.close();
-		} catch (SQLException e) {
-			System.err.println("SQL: " + sql);
-			throw new RuntimeException(e);
 		}
 	}
 

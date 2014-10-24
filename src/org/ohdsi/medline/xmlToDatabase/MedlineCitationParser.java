@@ -20,95 +20,54 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.ohdsi.databases.DbType;
-import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.collections.OneToManySet;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * In this class, we do the actual work of reading the XML and inserting the data into the database
+ * 
+ * @author MSCHUEMI
+ *
+ */
 public class MedlineCitationParser {
 
 	private OneToManySet<String, String>	tables2Fields	= new OneToManySet<String, String>();
 	private String							pmid;
 	private String							pmid_version;
-	private Connection						connection;
-	private DbType							dbType;
+	private ConnectionWrapper				connectionWrapper;
 
-	public MedlineCitationParser(Connection connection, String schema, DbType dbType) {
-		this.connection = connection;
-		this.dbType = dbType;
-		try {
-			Set<String> tables = new HashSet<String>();
-			Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-			if (dbType.equals(DbType.MSSQL))
-				statement.execute("SHOW TABLES;");
-			else if (dbType.equals(DbType.MSSQL))
-				statement.execute("SELECT name FROM " + schema + ".sys.tables ");
-			if (dbType.equals(DbType.POSTGRESQL))
-				statement.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = '" + schema.toLowerCase() + "'");
-			ResultSet resultSet = statement.getResultSet();
-			while (resultSet.next()) {
-				String name = Abbreviator.unAbbreviate(resultSet.getString(1));
-				if (name.toLowerCase().startsWith("medlinecitation"))
-					tables.add(name);
-			}
-
-			for (String table : tables) {
-				if (dbType.equals(DbType.MSSQL))
-					statement.execute("SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='" + Abbreviator.abbreviate(table) + "';");
-				if (dbType.equals(DbType.POSTGRESQL))
-					statement.execute("SELECT COLUMN_NAME,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='" + Abbreviator.abbreviate(table) + "';");
-				resultSet = statement.getResultSet();
-				while (resultSet.next()) {
-					String field = resultSet.getString(1);
-					tables2Fields.put(table, field);
-				}
-			}
-			statement.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
+	public MedlineCitationParser(ConnectionWrapper connectionWrapper, String schema) {
+		this.connectionWrapper = connectionWrapper;
+		Set<String> tables = new HashSet<String>();
+		for (String table : connectionWrapper.getTableNames(schema)) {
+			table = Abbreviator.unAbbreviate(table);
+			if (table.toLowerCase().startsWith("medlinecitation"))
+				tables.add(table);
 		}
+		for (String table : tables)
+			for (String field : connectionWrapper.getFieldNames(Abbreviator.abbreviate(table)))
+				tables2Fields.put(table, field);
 	}
 
 	public void parseAndInjectIntoDB(Node citation) {
 		findPmidAndVersion(citation);
 
-		List<String> sqls = new ArrayList<String>();
-		deleteAllForPmidAndVersion(sqls);
+		connectionWrapper.setBatchMode(true);
+		deleteAllForPmidAndVersion();
 		Map<String, String> keys = new HashMap<String, String>();
 		keys.put("PMID", pmid);
 		keys.put("PMID_Version", pmid_version);
-		parseNode(citation, "", "MedlineCitation", new HashMap<String, String>(), true, keys, sqls);
+		parseNode(citation, "", "MedlineCitation", new HashMap<String, String>(), true, keys);
 
-		execute(sqls);
-	}
-
-	private void execute(List<String> sqls) {
-		try {
-			connection.setAutoCommit(false);
-			Statement statement = connection.createStatement();
-			for (String sql : sqls)
-				statement.addBatch(sql);
-			statement.executeBatch();
-			statement.close();
-			connection.setAutoCommit(true);
-		} catch (SQLException e) {
-			System.err.println(StringUtilities.join(sqls, "\n"));
-			e.printStackTrace();
-		}
+		connectionWrapper.setBatchMode(false);
 	}
 
 	/**
@@ -116,53 +75,21 @@ public class MedlineCitationParser {
 	 * 
 	 * @param sqls
 	 */
-	private void deleteAllForPmidAndVersion(List<String> sqls) {
+	private void deleteAllForPmidAndVersion() {
 		for (String table : tables2Fields.keySet()) {
 			String sql = "DELETE FROM " + Abbreviator.abbreviate(table) + " WHERE pmid = " + pmid + " AND pmid_version = " + pmid_version;
-			sqls.add(sql);
+			connectionWrapper.execute(sql);
 		}
 
 	}
 
-	private void insertIntoDB(String table, Map<String, String> field2Value, List<String> sqls) {
+	private void insertIntoDB(String table, Map<String, String> field2Value) {
 		removeFieldsNotInDb(table, field2Value);
-		StringBuilder sql = new StringBuilder();
-		sql.append("INSERT INTO ");
-		sql.append(Abbreviator.abbreviate(table));
-		sql.append(" (");
-		boolean first = true;
-		for (String field : field2Value.keySet()) {
-			if (first)
-				first = false;
-			else
-				sql.append(",");
-			sql.append(Abbreviator.abbreviate(field));
-		}
-
-		if (dbType.equals(DbType.MYSQL)) { // MySQL uses double quotes, escape using backslash
-			sql.append(") VALUES (\"");
-			first = true;
-			for (String field : field2Value.keySet()) {
-				if (first)
-					first = false;
-				else
-					sql.append("\",\"");
-				sql.append(field2Value.get(field).replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\""));
-			}
-			sql.append("\");");
-		} else if (dbType.equals(DbType.MYSQL) || dbType.equals(DbType.POSTGRESQL) ) { // MSSQL uses single quotes, escape by doubling
-			sql.append(") VALUES ('");
-			first = true;
-			for (String field : field2Value.keySet()) {
-				if (first)
-					first = false;
-				else
-					sql.append("','");
-				sql.append(field2Value.get(field).replaceAll("'", "''"));
-			}
-			sql.append("');");
-		}
-		sqls.add(sql.toString());
+//		Map<String, String> unAbbrField2Value = new HashMap<String, String>();
+//		for (Map.Entry<String, String> entry : field2Value.entrySet())
+//			unAbbrField2Value.put(Abbreviator.unAbbreviate(entry.getKey()), entry.getValue());
+//		connectionWrapper.insertIntoTable(table, unAbbrField2Value);
+		connectionWrapper.insertIntoTable(table, field2Value);
 	}
 
 	private void removeFieldsNotInDb(String table, Map<String, String> field2Value) {
@@ -193,8 +120,7 @@ public class MedlineCitationParser {
 		return false;
 	}
 
-	private void parseNode(Node node, String name, String tableName, HashMap<String, String> field2Value, boolean tableRoot, Map<String, String> keys,
-			List<String> sqls) {
+	private void parseNode(Node node, String name, String tableName, HashMap<String, String> field2Value, boolean tableRoot, Map<String, String> keys) {
 		// Add this value:
 		if (node.getNodeValue() != null && node.getNodeValue().trim().length() != 0)
 			field2Value.put(name.length() == 0 ? "Value" : name, node.getNodeValue());
@@ -221,15 +147,15 @@ public class MedlineCitationParser {
 			if (tables2Fields.keySet().contains(potentialNewTableName.toLowerCase())) {// Its a sub table
 				Map<String, String> newKeys = new HashMap<String, String>(keys);
 				newKeys.put(potentialNewTableName + "_Order", Integer.toString(subCount++));
-				parseNode(child, "", potentialNewTableName, new HashMap<String, String>(), true, newKeys, sqls);
+				parseNode(child, "", potentialNewTableName, new HashMap<String, String>(), true, newKeys);
 			} else {
-				parseNode(child, childName, tableName, field2Value, false, keys, sqls);
+				parseNode(child, childName, tableName, field2Value, false, keys);
 			}
 		}
 
 		if (tableRoot) { // Bottom level completed: write values to database
 			field2Value.putAll(keys);
-			insertIntoDB(tableName, field2Value, sqls);
+			insertIntoDB(tableName, field2Value);
 		}
 	}
 
@@ -241,16 +167,16 @@ public class MedlineCitationParser {
 	}
 
 	public void delete(Node node) {
-		List<String> sqls = new ArrayList<String>();
+		connectionWrapper.setBatchMode(true);
 		NodeList children = node.getChildNodes();
 		for (int j = 0; j < children.getLength(); j++) {
 			Node child = children.item(j);
 			if (child.getNodeName().equals("PMID")) {
 				pmid = child.getFirstChild().getNodeValue();
 				pmid_version = child.getAttributes().getNamedItem("Version").getNodeValue();
-				deleteAllForPmidAndVersion(sqls);
+				deleteAllForPmidAndVersion();
 			}
 		}
-		execute(sqls);
+		connectionWrapper.setBatchMode(false);
 	}
 }

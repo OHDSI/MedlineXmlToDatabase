@@ -16,3 +16,19 @@ The application is run in two phases:
 This is still very much work in progress. See the MainClass to see how one could run this Java project.
 
 Note that the application works directly of the GZipped XML files, so no need to unzip them.
+
+How to use
+==========
+
+- Download all xml.gz files from MEDLINE (see http://www.nlm.nih.gov/databases/license/license.html for licensing information)
+
+- Create an ini file according to the example in the iniFileExamples folder, pointing to the folder containing the xml.gz files, and the server and schema where the data should be uploaded
+
+- Run the MainClass with parameters ```-analyze -ini <path to ini file>``` to create the database structure
+
+- Run the MainClass with parameters ```-parse -ini <path to ini file>``` to load the data from the xml files into the database
+
+
+
+
+

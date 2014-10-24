@@ -20,12 +20,6 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import org.ohdsi.databases.DBConnector;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.utilities.files.IniFile;
 import org.w3c.dom.Document;
@@ -75,39 +69,12 @@ public class MedlineAnalyserMain {
 	}
 
 	private void createDatabase(String server, String schema, String domain, String user, String password, String dateSourceType) {
-		DbType dbType = new DbType(dateSourceType);
-		Connection connection = DBConnector.connect(server, domain, user, password, dbType);
-		StringBuilder sql = new StringBuilder();
-		try {
-			Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-			sql = new StringBuilder();
-			if (dbType.equals(DbType.ORACLE))
-				sql.append("ALTER SESSION SET current_schema = " + schema);
-			else if (dbType.equals(DbType.POSTGRESQL))
-				sql.append("SET search_path TO " + schema);
-			else
-				sql.append("USE " + schema);
-			statement.execute(sql.toString());
-			System.out.println("Creating tables");
-			sql = new StringBuilder();
-			for (String line : medlineCitationAnalyser.getSQL(dateSourceType).split("\n")) {
-				sql.append(line);
-				if (line.trim().endsWith(";")) {
-					statement.execute(sql.toString());
-					sql = new StringBuilder();
-				} else
-					sql.append('\n');
-			}
-
-			statement.close();
-			PmidToDate.createTable(connection,dbType);
-			connection.close();
-		} catch (SQLException e) {
-			System.err.println("SQL: " + sql.toString());
-			throw new RuntimeException(e);
-		}
-
+		ConnectionWrapper connectionWrapper = new ConnectionWrapper(server, domain, user, password, new DbType(dateSourceType));
+		connectionWrapper.use(schema);
+		System.out.println("Creating tables");
+		medlineCitationAnalyser.createTables(connectionWrapper);
+		PmidToDate.createTable(connectionWrapper);
+		connectionWrapper.close();
 		System.out.println("Finished creating table structure");
 	}
-
 }

@@ -27,6 +27,11 @@ import org.ohdsi.utilities.collections.Pair;
 import org.ohdsi.utilities.files.ReadCSVFileWithHeader;
 import org.ohdsi.utilities.files.Row;
 
+/**
+ * Abbreviates some table names so they can fit in the DB
+ * @author MSCHUEMI
+ *
+ */
 public class Abbreviator {
 	public static List<Pair<String, String>>	termToAbbr	= loadTermToAbbr();
 
