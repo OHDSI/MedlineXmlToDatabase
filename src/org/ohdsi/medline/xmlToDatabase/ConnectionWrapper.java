@@ -121,7 +121,7 @@ public class ConnectionWrapper {
 				sql.append(field2Value.get(field).replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\""));
 			}
 			sql.append("\");");
-		} else if (dbType.equals(DbType.MYSQL) || dbType.equals(DbType.POSTGRESQL)) { // MSSQL uses single quotes, escape by doubling
+		} else if (dbType.equals(DbType.MSSQL) || dbType.equals(DbType.POSTGRESQL)) { // MSSQL uses single quotes, escape by doubling
 			sql.append(") VALUES ('");
 			first = true;
 			for (String field : fields) {
