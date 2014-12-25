@@ -24,7 +24,7 @@ How to use
 
 - Create an ini file according to the example in the iniFileExamples folder, pointing to the folder containing the xml.gz files, and the server and schema where the data should be uploaded
 
-- Run the MainClass with parameters ```-analyze -ini <path to ini file>``` to create the database structure
+- Run the MainClass with parameters ```-analyse -ini <path to ini file>``` to create the database structure
 
 - Run the MainClass with parameters ```-parse -ini <path to ini file>``` to load the data from the xml files into the database
 
