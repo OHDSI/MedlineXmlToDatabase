@@ -36,7 +36,8 @@ Additional notes
 -----------------------------------------------------------------
 
 ## Creating the postgres user and database on Ubuntu 14
-`
+
+```
 $ sudo -i -u postgres
 postgres$ createuser --interactive
 # create the medline user
@@ -44,26 +45,31 @@ postgres$ createdb medline
 postgres$ psql
 postgres: ALTER ROLE medline WITH PASSWORD '<password>'
 postgres: \q
-`
+```
+
 ## Deleting all tables from the schema (works for postgres)
-1) run the following query as the database user from within psql
-2) copy and paste the output within psql
-`
+
+1. run the following query as the database user from within psql
+
+2. copy and paste the output within psql
+
+```
 SELECT 'drop table if exists "' || tablename || '" cascade;'
 FROM pg_tables
 WHERE schemaname = 'public';
-`
+```
 
 ## Backup of the 'medline' database 
 
 This can be done from pgadmin. The backup file for 'medline' can then be moved to a different database
 and restored using the following commands as the postgres super-user:
-`
+
+```
 $ sudo -i -u postgres
 postgres$ createuser --interactive
 # create the medline user
 postgres$ createdb -T template0 medline
 postgres$ pg_restore -d medline <path to the dump file>
-`
+```
 
 
