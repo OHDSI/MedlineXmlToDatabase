@@ -24,6 +24,7 @@ How to use
 
 - Create an ini file according to the example in the iniFileExamples folder, pointing to the folder containing the xml.gz files, and the server and schema where the data should be uploaded
 
+<<<<<<< HEAD
 - Compile all java classes. If you have Ant installed you can run the 'compile' target
 
 - Run the MainClass with parameters ```-analyze -ini <path to ini file>``` to create the database structure. If you have Ant installed you can run the 'run-analyzer' target. On Linux, run it using nohup so that the process is not dependent on the terminal session that starts it: 'nohup ant -noinput run-analyzer &'
@@ -59,5 +60,13 @@ postgres$ createuser --interactive
 # create the medline user
 postgres$ createdb -T template0 medline
 postgres$ pg_restore -d medline <path to the dump file>
+=======
+- Run the MainClass with parameters ```-analyse -ini <path to ini file>``` to create the database structure
+
+- Run the MainClass with parameters ```-parse -ini <path to ini file>``` to load the data from the xml files into the database
+
+
+
+>>>>>>> 20a83acf5eab2a59eb2e9e16947666ee5e7a5ebf
 
 
