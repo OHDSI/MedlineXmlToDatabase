@@ -1,0 +1,110 @@
+<project name="MedlineXmlToDatabase" basedir="." >
+  <property name="ini-path" location="."/>
+
+  <target name="clean">
+    <delete dir="target/classes" />
+  </target>
+
+
+  <target name="compile-utilities" depends="clean">
+    <mkdir dir="target"/>
+    <mkdir dir="target/classes"/>  
+    
+    <javac srcdir="src/org/ohdsi/utilities"
+	   destdir="target/classes"
+	   debug="on" 
+	   debuglevel="lines,vars,source" 
+	   >
+      <compilerarg value="-Xlint:unchecked" />
+      <compilerarg value="-Xlint:deprecation" />
+      <classpath> 
+	<fileset dir="lib/">
+	  <include name="*.jar"/>
+	</fileset>           
+      </classpath>
+    </javac>                          
+  </target> 
+
+  <target name="compile-database" depends="compile-utilities">
+    <mkdir dir="target"/>
+    <mkdir dir="target/classes"/>  
+    
+    <javac srcdir="src/org/ohdsi/databases"
+	   destdir="target/classes"
+	   debug="on" 
+	   debuglevel="lines,vars,source" 
+	   >
+      <compilerarg value="-Xlint:unchecked" />
+      <compilerarg value="-Xlint:deprecation" />
+      <classpath> 
+	<fileset dir="lib/">
+	  <include name="*.jar"/>
+	</fileset>
+        <fileset dir="target/classes">
+	  <include name="*.class"/>
+	</fileset>           
+      </classpath>
+    </javac>                          
+  </target> 
+
+  <target name="compile" depends="compile-database">
+    <mkdir dir="target"/>
+    <mkdir dir="target/classes"/>  
+    
+    <javac srcdir="src/org/ohdsi/medline/xmlToDatabase"
+	   destdir="target/classes"
+	   debug="on" 
+	   debuglevel="lines,vars,source" 
+	   >
+      <compilerarg value="-Xlint:unchecked" />
+      <compilerarg value="-Xlint:deprecation" />
+      <classpath> 
+	<fileset dir="lib/">
+	  <include name="*.jar"/>
+	</fileset>          
+        <fileset dir="target/classes">
+	  <include name="*.class"/>
+	</fileset>            
+      </classpath>
+    </javac>                          
+  </target>  
+
+  <target name="run-analyzer" depends="compile">  
+    <java classname="org.ohdsi.medline.xmlToDatabase.MainClass"
+      	  fork="true"
+	  maxmemory="4000m"
+	  failonerror="true">
+      <arg line="-analyse -ini ${ini-path}/MedlineXmlToDatabase.ini"/> 
+      <classpath> 
+	<pathelement path="target/classes" />
+	<pathelement location="lib/"/>
+	<fileset dir="lib/">
+	  <include name="*.jar"/>
+	</fileset>           
+        <fileset dir="target/classes/">
+	  <include name="*.class"/>
+	</fileset>            
+      </classpath>
+    </java>                          
+  </target>
+
+  <target name="run-parse" depends="">  
+    <java classname="org.ohdsi.medline.xmlToDatabase.MainClass"
+      	  fork="true"
+	  maxmemory="4000m"
+	  failonerror="true">
+      <arg line="-parse -ini ${ini-path}/MedlineXmlToDatabase.ini"/> 
+      <classpath> 
+	<pathelement path="target/classes" />
+	<pathelement location="lib/"/>
+	<fileset dir="lib/">
+	  <include name="*.jar"/>
+	</fileset>           
+        <fileset dir="target/classes/">
+	  <include name="*.class"/>
+	</fileset>            
+      </classpath>
+    </java>                          
+  </target>
+
+</project>
