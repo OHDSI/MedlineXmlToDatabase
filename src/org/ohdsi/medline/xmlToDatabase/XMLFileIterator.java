@@ -20,6 +20,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -35,33 +37,43 @@ import org.xml.sax.SAXException;
 
 /**
  * Iterates over all xml.gz files in a specified folder, decompressing and parsing them in a separate thread.
+ * 
  * @author Schuemie
- *
+ * 
  */
 public class XMLFileIterator implements Iterator<Document> {
-
-	private Iterator<File> fileIterator;
-	private DecompressAndParseThread decompressAndParseThread = new DecompressAndParseThread();
-	private boolean hasNext = true;
-
+	
+	private Iterator<File>				fileIterator;
+	private DecompressAndParseThread	decompressAndParseThread	= new DecompressAndParseThread();
+	private boolean						hasNext						= true;
+	
 	/**
-	 * @param folder	Specifies the absolute path to the folder containing the xml files
+	 * @param folder
+	 *            Specifies the absolute path to the folder containing the xml files
 	 */
-	public XMLFileIterator(String folder){
-		this(folder,Integer.MAX_VALUE);
+	public XMLFileIterator(String folder) {
+		this(folder, Integer.MAX_VALUE);
 	}
 	
-    /**
-     * 
-     * @param folder		Specifies the absolute path to the folder containing the xml files
-     * @param sampleSize	Specifies the maximum number of files that is randomly sampled
-     */
-	public XMLFileIterator(String folder, int sampleSize){
+	/**
+	 * 
+	 * @param folder
+	 *            Specifies the absolute path to the folder containing the xml files
+	 * @param sampleSize
+	 *            Specifies the maximum number of files that is randomly sampled
+	 */
+	public XMLFileIterator(String folder, int sampleSize) {
 		List<File> files = new ArrayList<File>();
 		for (File file : new File(folder).listFiles())
-			if (file.getAbsolutePath().endsWith("xml.gz")) 
+			if (file.getAbsolutePath().endsWith("xml.gz"))
 				files.add(file);
 		files = RandomUtilities.sampleWithoutReplacement(files, sampleSize);
+		Collections.sort(files, new Comparator<File>() {
+			@Override
+			public int compare(File o1, File o2) {
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
 		fileIterator = files.iterator();
 		if (fileIterator.hasNext())
 			decompressAndParseThread.startProcessing(fileIterator.next());
@@ -70,12 +82,12 @@ public class XMLFileIterator implements Iterator<Document> {
 			decompressAndParseThread.terminate();
 		}
 	}
-
+	
 	@Override
 	public boolean hasNext() {
 		return hasNext;
 	}
-
+	
 	@Override
 	public Document next() {
 		decompressAndParseThread.waitUntilFinished();
@@ -88,7 +100,7 @@ public class XMLFileIterator implements Iterator<Document> {
 		}
 		return document;
 	}
-
+	
 	@Override
 	public void remove() {
 		throw new RuntimeException("Calling unimplemented method remove in " + this.getClass().getName());
@@ -96,25 +108,25 @@ public class XMLFileIterator implements Iterator<Document> {
 	
 	private class DecompressAndParseThread extends BatchProcessingThread {
 		
-		private File file;
-		private Document document;
+		private File		file;
+		private Document	document;
 		
-		public void startProcessing(File file){
+		public void startProcessing(File file) {
 			this.file = file;
 			proceed();
 		}
 		
-		public Document getDocument(){
+		public Document getDocument() {
 			return document;
 		}
-
+		
 		@Override
 		protected void process() {
 			System.out.println("Processing " + file.getName());
 			try {
 				FileInputStream fileInputStream = new FileInputStream(file);
 				GZIPInputStream gzipInputStream = new GZIPInputStream(fileInputStream);
-				DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder(); 
+				DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 				document = builder.parse(gzipInputStream);
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
