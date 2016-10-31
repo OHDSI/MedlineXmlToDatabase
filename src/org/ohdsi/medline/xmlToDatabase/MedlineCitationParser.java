@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.ohdsi.databases.ConnectionWrapper;
 import org.ohdsi.utilities.collections.OneToManySet;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;

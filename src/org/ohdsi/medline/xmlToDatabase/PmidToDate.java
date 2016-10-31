@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.ohdsi.databases.ConnectionWrapper;
 import org.ohdsi.utilities.XmlTools;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;

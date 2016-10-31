@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.ohdsi.databases.ConnectionWrapper;
 import org.ohdsi.utilities.StringUtilities;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;

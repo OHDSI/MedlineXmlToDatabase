@@ -15,6 +15,8 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
+import org.ohdsi.meshXmlToDatabase.MeshParserMain;
+
 /**
  * The main class that parses the command line arguments, and calls either MedlineAnalyserMain or MedlineParserMain
  * @author MSCHUEMI
@@ -23,7 +25,7 @@ package org.ohdsi.medline.xmlToDatabase;
 public class MainClass {
 
 	private static enum Action {
-		ANALYSE, PARSE
+		ANALYSE, PARSE, PARSE_MESH
 	};
 
 	private static Action	action;
@@ -33,8 +35,10 @@ public class MainClass {
 		parseParameters(args);
 		if (action == Action.ANALYSE)
 			MedlineAnalyserMain.main(new String[] { pathToIniFile });
-		else
+		else if (action == Action.PARSE)
 			MedlineParserMain.main(new String[] { pathToIniFile });
+		if (action == Action.PARSE_MESH)
+			MeshParserMain.main(new String[] { pathToIniFile });
 	}
 
 	private static void parseParameters(String[] args) {
@@ -45,6 +49,8 @@ public class MainClass {
 					action = Action.ANALYSE;
 				else if (arg.toLowerCase().equals("-parse"))
 					action = Action.PARSE;
+				else if (arg.toLowerCase().equals("-parse_mesh"))
+					action = Action.PARSE_MESH;
 				else
 					mode = arg.toLowerCase();
 			} else {

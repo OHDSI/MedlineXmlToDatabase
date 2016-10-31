@@ -15,6 +15,7 @@
  ******************************************************************************/
 package org.ohdsi.medline.xmlToDatabase;
 
+import org.ohdsi.databases.ConnectionWrapper;
 import org.ohdsi.databases.DbType;
 import org.ohdsi.utilities.files.IniFile;
 import org.w3c.dom.Document;
