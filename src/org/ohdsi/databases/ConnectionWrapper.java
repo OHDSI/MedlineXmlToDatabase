@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.ohdsi.medline.xmlToDatabase.Abbreviator;
-import org.ohdsi.medline.xmlToDatabase.MedlineCitationAnalyser.VariableType;
+import org.ohdsi.medlineXmlToDatabase.Abbreviator;
+import org.ohdsi.medlineXmlToDatabase.MedlineCitationAnalyser.VariableType;
 import org.ohdsi.utilities.StringUtilities;
 import org.ohdsi.utilities.files.Row;
 
