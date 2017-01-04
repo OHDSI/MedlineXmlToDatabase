@@ -7,7 +7,7 @@ This is a Java application for loading MEDLINE XML files into a relational datab
 
 2. Any changes in the XML structure that occur over the years should not require changing the program.
 
-* In 2017 we started breaking this rule by omitting inline tags in text fields. For example, abstracts could contain <I> and <B> tags, but these are ignored when inserting into the database.
+* In 2017 we started breaking this rule by omitting inline tags in text fields. For example, abstracts could contain &lt;I&gt; and &lt;B&gt; tags, but these are ignored when inserting into the database.
 
 The application is run in two phases:
 
