@@ -32,7 +32,7 @@ This is a pure Java application that can only be used through the command line.
 
 System Requirements
 ============
-Requires Java 1.7 or higher, and read access to the database to be scanned.   Java can be downloaded from
+Requires Java 1.7 or higher, and write and create access to the database.   Java can be downloaded from
 <a href="http://www.java.com" target="_blank">http://www.java.com</a>.
 
 Dependencies
