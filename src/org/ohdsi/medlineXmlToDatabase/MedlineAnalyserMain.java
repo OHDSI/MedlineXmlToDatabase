@@ -44,6 +44,8 @@ public class MedlineAnalyserMain {
 		main.analyseFolder(iniFile.get("XML_FOLDER"));
 		main.createDatabase(iniFile.get("SERVER"), iniFile.get("SCHEMA"), iniFile.get("DOMAIN"), iniFile.get("USER"), iniFile.get("PASSWORD"),
 				iniFile.get("DATA_SOURCE_TYPE"));
+//		MedlineAnalyserMain main = new MedlineAnalyserMain();
+//		main.analyseFolder("S:/Data/MEDLINE/Unprocessed/test");
 	}
 
 	private void analyseFolder(String folderName) {
@@ -54,6 +56,7 @@ public class MedlineAnalyserMain {
 			analyse(iterator.next());
 
 		medlineCitationAnalyser.finish();
+//		medlineCitationAnalyser.printStructure();
 	}
 
 	private void analyse(Document document) {

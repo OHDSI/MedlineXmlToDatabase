@@ -26,6 +26,7 @@ import java.util.Set;
 
 import org.ohdsi.databases.ConnectionWrapper;
 import org.ohdsi.utilities.StringUtilities;
+import org.ohdsi.utilities.XmlTools;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -37,20 +38,20 @@ import org.w3c.dom.NodeList;
  * 
  */
 public class MedlineCitationAnalyser {
-
+	
 	private static String				MEDLINE_CITATION	= "MedlineCitation";
 	private static String				ORDER_POSTFIX		= "_Order";
 	private Map<String, Set<String>>	table2Fields		= new HashMap<String, Set<String>>();
 	private Map<String, VariableType>	field2VariableType	= new HashMap<String, VariableType>();
-
+	
 	public MedlineCitationAnalyser() {
 		table2Fields.put(MEDLINE_CITATION, new HashSet<String>());
 	}
-
+	
 	public void analyse(Node citation) {
 		analyseNode(citation, "", MEDLINE_CITATION);
 	}
-
+	
 	/**
 	 * Call this method after analyzing all XML files.
 	 */
@@ -58,7 +59,7 @@ public class MedlineCitationAnalyser {
 		cleanup();
 		addKeys();
 	}
-
+	
 	/**
 	 * Cleanup: remove sub table fields from higher level table
 	 */
@@ -76,7 +77,7 @@ public class MedlineCitationAnalyser {
 			}
 		}
 	}
-
+	
 	/**
 	 * Adds primary keys to all tables
 	 */
@@ -100,7 +101,7 @@ public class MedlineCitationAnalyser {
 			field2VariableType.put(concatenate(table, "PMID_Version"), new VariableType(true, 1));
 		}
 	}
-
+	
 	public void printStructure() {
 		List<String> sortedTables = new ArrayList<String>(table2Fields.keySet());
 		Collections.sort(sortedTables);
@@ -112,12 +113,12 @@ public class MedlineCitationAnalyser {
 				System.out.println("- " + field + "\t" + field2VariableType.get(concatenate(table, field)));
 		}
 	}
-
+	
 	public void createTables(ConnectionWrapper connectionWrapper) {
 		List<String> sortedTables = new ArrayList<String>(table2Fields.keySet());
 		Collections.sort(sortedTables);
 		for (String table : sortedTables) {
-
+			
 			List<String> sortedFields = new ArrayList<String>(table2Fields.get(table));
 			Collections.sort(sortedFields);
 			List<VariableType> types = new ArrayList<VariableType>(sortedFields.size());
@@ -132,12 +133,15 @@ public class MedlineCitationAnalyser {
 			for (String field : sortedFields)
 				if (field.endsWith(ORDER_POSTFIX))
 					primaryKey.add(field);
-
+			
 			connectionWrapper.createTableUsingVariableTypes(table, sortedFields, types, primaryKey);
 		}
 	}
-
+	
+	
 	private void analyseNode(Node node, String name, String tableName) {
+				 if (node.getNodeName().toLowerCase().equals("abstracttext"))
+				 System.out.println("asf");
 		// Add attributes:
 		NamedNodeMap attributes = node.getAttributes();
 		if (attributes != null)
@@ -147,69 +151,83 @@ public class MedlineCitationAnalyser {
 				table2Fields.get(tableName).add(attributeName);
 				updateVariableType(concatenate(tableName, attributeName), attribute.getNodeValue());
 			}
-
-		// Add children
-		Set<String> seenChildren = new HashSet<String>();
-		NodeList children = node.getChildNodes();
-		for (int j = 0; j < children.getLength(); j++) {
-			Node child = children.item(j);
-			String childName = name;
-			String tempTableName = tableName;
-			if (!child.getNodeName().equals("#text")) {
-				childName = concatenate(childName, child.getNodeName());
-				String potentialNewTableName = concatenate(tableName, childName);
-				if (!seenChildren.add(childName)) { // Multiple instances per citation: must make it a sub table
-					if (!table2Fields.containsKey(potentialNewTableName)) {
-						Set<String> fields = new HashSet<String>();
-						table2Fields.put(potentialNewTableName, fields);
+		if (XmlTools.isTextNode(node)) {
+			table2Fields.get(tableName).add(name);
+			String value = node.getTextContent();
+			updateVariableType(concatenate(tableName, name), value);
+		} else {
+			// Add children
+			NodeList children = node.getChildNodes();
+			if (children.getLength() > 0) {
+				Set<String> seenChildren = new HashSet<String>();
+				for (int j = 0; j < children.getLength(); j++) {
+					Node child = children.item(j);
+					String childName = name;
+					String tempTableName = tableName;
+					if (!child.getNodeName().equals("#text")) {
+						childName = concatenate(childName, child.getNodeName());
+						String potentialNewTableName = concatenate(tableName, childName);
+						if (!seenChildren.add(childName)) { // Multiple instances per citation: must make it a sub table
+							if (!table2Fields.containsKey(potentialNewTableName)) {
+								Set<String> fields = new HashSet<String>();
+								table2Fields.put(potentialNewTableName, fields);
+							}
+							tempTableName = potentialNewTableName;
+							childName = "";
+						} else if (table2Fields.containsKey(potentialNewTableName)) {// Already know its a sub table
+							tempTableName = potentialNewTableName;
+							childName = "";
+						}
 					}
-					tempTableName = potentialNewTableName;
-					childName = "";
-				} else if (table2Fields.containsKey(potentialNewTableName)) {// Already know its a sub table
-					tempTableName = potentialNewTableName;
-					childName = "";
+					if (child.getNodeValue() != null && child.getNodeValue().trim().length() != 0) {
+						table2Fields.get(tempTableName).add(childName);
+						updateVariableType(concatenate(tempTableName, childName), child.getNodeValue());
+					}
+					analyseNode(child, childName, tempTableName);
 				}
 			}
-			if (child.getNodeValue() != null && child.getNodeValue().trim().length() != 0) {
-				table2Fields.get(tempTableName).add(childName);
-				updateVariableType(concatenate(tempTableName, childName), child.getNodeValue());
-			}
-			analyseNode(child, childName, tempTableName);
 		}
 	}
-
+	
 	private void updateVariableType(String name, String value) {
 		VariableType type = field2VariableType.get(name);
 		if (type == null) {
 			type = new VariableType();
 			field2VariableType.put(name, type);
 		}
-
+		
 		if (type.isNumeric && !StringUtilities.isInteger(value))
 			type.isNumeric = false;
-
+		
 		if (value.length() > type.maxLength)
 			type.maxLength = value.length();
 	}
-
+	
 	private String concatenate(String pre, String post) {
 		if (pre.length() != 0)
 			return pre + "_" + post;
 		else
 			return post;
 	}
-
+	
 	public class VariableType {
 		public boolean	isNumeric	= true;
 		public int		maxLength	= 0;
-
+		
 		public VariableType(boolean isNumeric, int maxLength) {
 			this.isNumeric = isNumeric;
 			this.maxLength = maxLength;
 		}
-
+		
 		public VariableType() {
 		};
-
+		
+		public String toString() {
+			if (isNumeric)
+				return "INT";
+			else
+				return "VARCHAR";
+		}
+		
 	}
 }

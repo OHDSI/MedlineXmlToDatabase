@@ -3,9 +3,11 @@ MedlineXmlToDatabase
 
 This is a Java application for loading MEDLINE XML files into a relational database (currently supporting SQL Server and PostgreSQL). The application was designed with two goals in mind:
 
-1. Everything in the XML files needs to go into the database.
+1. Everything in the XML files needs to go into the database*.
 
 2. Any changes in the XML structure that occur over the years should not require changing the program.
+
+* In 2017 we started breaking this rule by omitting inline tags in text fields. For example, abstracts could contain <I> and <B> tags, but these are ignored when inserting into the database.
 
 The application is run in two phases:
 
@@ -22,6 +24,7 @@ Features
 - All data in the XML files is loaded in the database
 - Allows incremental loading of data as it is made available by NLM
 - Automatically deletes old versions of citations as revisions are made available
+- Also includes a parser for the MeSH database
 
 Technology
 ==========
@@ -47,6 +50,14 @@ Getting Started
 4. From the command line, use ```java -jar MedlineXmlToDatabase.jar -analyse -ini <path to ini file>``` to create the database structure.
 
 5. From the command line, use ```java -jar MedlineXmlToDatabase.jar -parse -ini <path to ini file>``` to load the data from the xml files into the database.
+
+Optionally, you can also include the MeSH database:
+
+6. Download the XML gz files (descxxxx.gz and suppxxxx.gz) from NLM (see https://www.nlm.nih.gov/mesh/download_mesh.html)
+
+7. Add the path to the gz files to the ini file under ```MESH_XML_FOLDER```
+
+8.  From the command line, use ```java -jar MedlineXmlToDatabase.jar -parse_mesh -ini <path to ini file>``` to load the data from the xml files into the database.
 
 Getting Involved
 =============

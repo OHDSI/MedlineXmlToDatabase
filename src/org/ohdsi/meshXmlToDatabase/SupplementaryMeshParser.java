@@ -18,19 +18,20 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 public class SupplementaryMeshParser extends DefaultHandler {
-
+	
 	private InsertableDbTable	outTerms;
 	private InsertableDbTable	outRelationship;
 	private Row					row;
+	private StringBuilder		recordName;
 	private Trace				trace	= new Trace();
 	private String				ui;
-
+	
 	public SupplementaryMeshParser(InsertableDbTable outTerms, InsertableDbTable outRelationship) {
 		super();
 		this.outRelationship = outRelationship;
 		this.outTerms = outTerms;
 	}
-
+	
 	public static void parse(String fileName, InsertableDbTable outTerms, InsertableDbTable outRelationship) {
 		StringUtilities.outputWithTime("Parsing supplement file");
 		try {
@@ -48,59 +49,64 @@ public class SupplementaryMeshParser extends DefaultHandler {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public void startElement(String uri, String localName, String name, Attributes a) {
 		trace.push(name);
-		if (name.equalsIgnoreCase("SupplementalRecord"))
+		if (name.equalsIgnoreCase("SupplementalRecord")) {
 			row = new Row();
+			recordName = new StringBuilder();
+		}
 	}
-
+	
 	public void characters(char ch[], int start, int length) throws SAXException {
 		String traceString = trace.toString();
 		if (traceString.equalsIgnoreCase("SupplementalRecordSet.SupplementalRecord.SupplementalRecordUI")) {
 			ui = new String(ch, start, length);
 			row.add("ui", ui);
 		} else if (traceString.equalsIgnoreCase("SupplementalRecordSet.SupplementalRecord.SupplementalRecordName.String")) {
-			row.add("name", new String(ch, start, length));
+			if (recordName.length() != 0)
+				recordName.append(' ');
+			recordName.append(new String(ch, start, length));
 		} else if (traceString
 				.equalsIgnoreCase("SupplementalRecordSet.SupplementalRecord.HeadingMappedToList.HeadingMappedTo.DescriptorReferredTo.DescriptorUI")) {
 			Row rowPa = new Row();
-			rowPa.add("substance_ui", ui);
-			rowPa.add("pharmacological_action_ui", new String(ch, start, length).replace("*", ""));
+			rowPa.add("ui_1", ui);
+			rowPa.add("ui_2", new String(ch, start, length).replace("*", ""));
 			rowPa.add("relationship_id", "Maps to");
 			outRelationship.write(rowPa);
-		} else if (traceString
-				.equalsIgnoreCase("SupplementalRecordSet.SupplementalRecord.PharmacologicalActionList.PharmacologicalAction.DescriptorReferredTo.DescriptorUI")) {
+		} else if (traceString.equalsIgnoreCase(
+				"SupplementalRecordSet.SupplementalRecord.PharmacologicalActionList.PharmacologicalAction.DescriptorReferredTo.DescriptorUI")) {
 			Row rowPa = new Row();
-			rowPa.add("substance_ui", ui);
-			rowPa.add("pharmacological_action_ui", new String(ch, start, length));
+			rowPa.add("ui_1", ui);
+			rowPa.add("ui_2", new String(ch, start, length));
 			rowPa.add("relationship_id", "Pharmacological action");
 			outRelationship.write(rowPa);
 		}
 	}
-
+	
 	public void endElement(String uri, String localName, String name) {
 		trace.pop();
 		if (name.equalsIgnoreCase("SupplementalRecord")) {
+			row.add("name", recordName.toString());
 			row.add("supplement", "1");
 			outTerms.write(row);
 		}
 	}
-
+	
 	private class Trace {
-		private List<String>	tags	= new ArrayList<String>();
-
+		private List<String> tags = new ArrayList<String>();
+		
 		public void push(String tag) {
 			tags.add(tag);
 		}
-
+		
 		public void pop() {
 			tags.remove(tags.size() - 1);
 		}
-
+		
 		public String toString() {
 			return StringUtilities.join(tags, ".");
 		}
 	}
-
+	
 }

@@ -396,7 +396,7 @@ public class ConnectionWrapper {
 			if (dbType.equals(DbType.POSTGRESQL))
 				statement.execute("SET datestyle = \"ISO, MDY\"");
 			else
-				statement.execute("SET DateFormat MDY;");
+				statement.execute("SET DateFormat DMY;");
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}

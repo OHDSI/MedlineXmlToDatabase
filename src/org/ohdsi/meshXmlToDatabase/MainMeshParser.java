@@ -70,8 +70,8 @@ public class MainMeshParser extends DefaultHandler {
 			treeNumberToUi.put(new String(ch, start, length), ui);
 		} else if (traceString.equalsIgnoreCase("DescriptorRecordSet.DescriptorRecord.PharmacologicalActionList.PharmacologicalAction.DescriptorReferredTo.DescriptorUI")) {
 			Row rowPa = new Row();
-			rowPa.add("substance_ui", ui);
-			rowPa.add("pharmacological_action_ui", new String(ch, start, length));
+			rowPa.add("ui_1", ui);
+			rowPa.add("ui_2", new String(ch, start, length));
 			rowPa.add("relationship_id", "Pharmacological action");
 			outRelationship.write(rowPa);
 		}

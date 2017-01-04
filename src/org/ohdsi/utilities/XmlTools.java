@@ -15,63 +15,100 @@
  ******************************************************************************/
 package org.ohdsi.utilities;
 
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class XmlTools {
-	public static Node getChildByName(Node node, String name){
+	public static boolean isTextNode(Node node) {
+		NodeList children = node.getChildNodes();
+		for (int j = 0; j < children.getLength(); j++) {
+			String name = children.item(j).getNodeName();
+			if ((name.equals("#text") && children.item(j).getNodeValue() != null && children.item(j).getNodeValue().trim().length() != 0) || name.equals("b")
+					|| name.equals("i") || name.equals("sup") || name.equals("sub"))
+				return true;
+		}
+		return false;
+	}
+	
+	public static String nodeToXml(Node node) {
+		StringWriter sw = new StringWriter();
+		try {
+			Transformer t = TransformerFactory.newInstance().newTransformer();
+			t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+			// t.setOutputProperty(OutputKeys.INDENT, "yes");
+			t.transform(new DOMSource(node), new StreamResult(sw));
+		} catch (TransformerException te) {
+			System.out.println("nodeToString Transformer Exception");
+		}
+		String string = sw.toString();
+		int start = string.indexOf('>') + 1;
+		int end = string.lastIndexOf('<');
+		if (start < end)
+			return string.substring(start, end);
+		else
+			return "";
+	}
+	
+	public static Node getChildByName(Node node, String name) {
 		NodeList childNodes = node.getChildNodes();
-		for (int i = 0; i < childNodes.getLength(); i++){
+		for (int i = 0; i < childNodes.getLength(); i++) {
 			Node childNode = childNodes.item(i);
 			if (childNode.getNodeName().equals(name))
 				return childNode;
 		}
 		return null;
 	}
-
-	public static String getChildByNameValue(Node node, String name){
+	
+	public static String getChildByNameValue(Node node, String name) {
 		Node childNode = getChildByName(node, name);
 		if (childNode == null)
 			return null;
-		else 
+		else
 			return getValue(childNode);
 	}
-
-	public static String getValue(Node node){
+	
+	public static String getValue(Node node) {
 		String value = node.getNodeValue();
-		if (value == null){
+		if (value == null) {
 			node = getChildByName(node, "#text");
 			if (node != null)
 				value = node.getNodeValue();
 		}
 		return value;
 	}
-
-	public static List<Node> getChildrenByName(Node node, String name){
+	
+	public static List<Node> getChildrenByName(Node node, String name) {
 		List<Node> result = new ArrayList<Node>();
 		NodeList childNodes = node.getChildNodes();
-		for (int i = 0; i < childNodes.getLength(); i++){
+		for (int i = 0; i < childNodes.getLength(); i++) {
 			Node childNode = childNodes.item(i);
 			if (childNode.getNodeName().equals(name))
 				result.add(childNode);
 		}
 		return result;
 	}
-
-	public static String getAttributeValue(Node node, String attributeName){
+	
+	public static String getAttributeValue(Node node, String attributeName) {
 		Node attributeNode = node.getAttributes().getNamedItem(attributeName);
 		if (attributeNode == null)
 			return null;
 		else
-			return attributeNode.getNodeValue();		
+			return attributeNode.getNodeValue();
 	}
-
-
-	public static boolean hasAttributeWithValue(Node node, String attributeName, String attributeValue){
+	
+	public static boolean hasAttributeWithValue(Node node, String attributeName, String attributeValue) {
 		Node attributeNode = node.getAttributes().getNamedItem(attributeName);
-		return (attributeNode != null && attributeNode.getNodeValue().equals(attributeValue));		
+		return (attributeNode != null && attributeNode.getNodeValue().equals(attributeValue));
 	}
 }

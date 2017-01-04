@@ -15,9 +15,13 @@
  ******************************************************************************/
 package org.ohdsi.medlineXmlToDatabase;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,37 +39,39 @@ import org.w3c.dom.NodeList;
  * @author mschuemi
  */
 public class PmidToDate {
-
+	
 	private List<String>		months		= getMonths();
 	private Pattern				yearPattern	= Pattern.compile("(19|20)[0-9][0-9]");
 	public static int			BATCH_SIZE	= 1000;
 	private static String		tableName	= "pmid_to_date";
 	private ConnectionWrapper	connectionWrapper;
-
+	
 	public PmidToDate(ConnectionWrapper connectionWrapper) {
 		this.connectionWrapper = connectionWrapper;
 		connectionWrapper.setDateFormat();
 	}
-
+	
 	public static void createTable(ConnectionWrapper connectionWrapper) {
 		List<String> fields = new ArrayList<String>();
 		List<String> types = new ArrayList<String>();
 		fields.add("pmid");
 		types.add("int");
-
+		
 		fields.add("pmid_version");
 		types.add("int");
-
+		
 		fields.add("date");
 		types.add("date");
-
+		
 		List<String> primaryKey = new ArrayList<String>();
 		primaryKey.add("PMID");
 		primaryKey.add("PMID_Version");
-
+		
 		connectionWrapper.createTable(tableName, fields, types, primaryKey);
 	}
-
+	
+	private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+	
 	public void insertDates(Document document) {
 		connectionWrapper.setBatchMode(true);
 		NodeList citationNodes = document.getElementsByTagName("MedlineCitation");
@@ -74,10 +80,9 @@ public class PmidToDate {
 			Node pmidNode = XmlTools.getChildByName(citation, "PMID");
 			String pmid = XmlTools.getValue(pmidNode);
 			String pmid_version = XmlTools.getAttributeValue(pmidNode, "Version");
-
+			
 			// Could be an update, so delete old record just to be sure:
 			connectionWrapper.execute("DELETE FROM pmid_to_date WHERE pmid = " + pmid + " AND pmid_version = " + pmid_version);
-
 			Node pubDateNode = XmlTools.getChildByName(
 					XmlTools.getChildByName(XmlTools.getChildByName(XmlTools.getChildByName(citation, "Article"), "Journal"), "JournalIssue"), "PubDate");
 			String yearString = XmlTools.getChildByNameValue(pubDateNode, "Year");
@@ -85,7 +90,14 @@ public class PmidToDate {
 			String dayString = XmlTools.getChildByNameValue(pubDateNode, "Day");
 			String medlineString = XmlTools.getChildByNameValue(pubDateNode, "MedlineDate");
 			String date = parseDate(yearString, monthString, dayString, medlineString);
-
+//			if (pmid.equals("27904912"))
+//				System.out.println("asdfsadf");
+			try {
+				date = dateFormat.format(dateFormat.parse(date));
+			} catch (ParseException e) {
+				System.err.println("Error parsing date with year = '"+yearString+"', month = '"+monthString+"', day = '"+dayString+"', medline date = '"+medlineString+"'");
+				date = null;
+			}
 			if (date == null) {
 				System.err.println("No valid date found for PMID " + pmid);
 			} else {
@@ -98,7 +110,7 @@ public class PmidToDate {
 		}
 		connectionWrapper.setBatchMode(false);
 	}
-
+	
 	private static List<String> getMonths() {
 		List<String> result = new ArrayList<String>(12);
 		result.add("Jan");
@@ -115,13 +127,13 @@ public class PmidToDate {
 		result.add("Dec");
 		return result;
 	}
-
+	
 	private String parseDate(String yearString, String monthString, String dayString, String medlineString) {
 		String year = null;
 		if (yearString == null) {
 			if (medlineString == null)
 				return null;
-
+			
 			Matcher matcher = yearPattern.matcher(medlineString);
 			if (matcher.find())
 				year = matcher.group();
@@ -140,7 +152,11 @@ public class PmidToDate {
 				}
 			}
 		} else {
-			month = Integer.toString(months.indexOf(monthString) + 1).toString();
+			try {
+				month = Integer.toString(Integer.parseInt(monthString));
+			} catch (NumberFormatException e) {
+				month = Integer.toString(months.indexOf(monthString) + 1).toString();
+			}
 		}
 		String day = dayString == null ? "1" : dayString;
 		return year + "-" + month + "-" + day;
