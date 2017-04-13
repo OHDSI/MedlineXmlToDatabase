@@ -71,7 +71,7 @@ MedlineXmlToDatabase is licensed under Apache License 2.0
 Development
 ===========
 MedlineXmlToDatabase was developed in Eclipse. Contributions are welcome.
-###Development status
+### Development status
 Beta testing
 
 Acknowledgements
