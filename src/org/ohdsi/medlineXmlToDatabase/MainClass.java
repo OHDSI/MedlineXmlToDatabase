@@ -32,6 +32,10 @@ public class MainClass {
 	private static String	pathToIniFile;
 
 	public static void main(String[] args) {
+		if (args.length == 0) {
+			System.out.println("See https://github.com/OHDSI/MedlineXmlToDatabase for details on how to use");
+			return;
+		}
 		parseParameters(args);
 		if (action == Action.ANALYSE)
 			MedlineAnalyserMain.main(new String[] { pathToIniFile });
