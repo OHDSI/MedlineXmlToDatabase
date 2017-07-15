@@ -171,9 +171,9 @@ public class ConnectionWrapper {
 						System.out.println(row.toString());
 					if (value.length() == 0 && emptyStringToNull)
 						value = null;
-					if (dbType == DbType.POSTGRESQL) // PostgreSQL does not allow unspecified types
+					if (dbType.equals(DbType.POSTGRESQL)) // PostgreSQL does not allow unspecified types
 						statement.setObject(i + 1, value, Types.OTHER);
-					else if (dbType == DbType.ORACLE) {
+					else if (dbType.equals(DbType.ORACLE)) {
 						statement.setString(i + 1, value);
 					} else
 						statement.setString(i + 1, value);
@@ -196,11 +196,16 @@ public class ConnectionWrapper {
 	public void createTable(String table, List<String> fields, List<String> types, List<String> primaryKey) {
 		StringBuilder sql = new StringBuilder();
 		sql.append("CREATE TABLE " + table + " (\n");
+		boolean first = true;
 		for (int i = 0; i < fields.size(); i++) {
-			sql.append("  " + fields.get(i) + " " + types.get(i) + ",\n");
+			if (first)
+				first = false;
+			else
+				sql.append(",\n");
+			sql.append("  " + fields.get(i) + " " + types.get(i));
 		}
 		if (primaryKey != null && primaryKey.size() != 0)
-			sql.append("  PRIMARY KEY (" + StringUtilities.join(primaryKey, ",") + ")\n");
+			sql.append("\n  PRIMARY KEY (" + StringUtilities.join(primaryKey, ",") + ")\n");
 		sql.append(");\n\n");
 		execute(Abbreviator.abbreviate(sql.toString()));
 	}
