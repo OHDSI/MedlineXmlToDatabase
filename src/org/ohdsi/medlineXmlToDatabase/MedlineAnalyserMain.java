@@ -43,7 +43,7 @@ public class MedlineAnalyserMain {
 		MedlineAnalyserMain main = new MedlineAnalyserMain();
 		main.analyseFolder(iniFile.get("XML_FOLDER"));
 		main.createDatabase(iniFile.get("SERVER"), iniFile.get("SCHEMA"), iniFile.get("DOMAIN"), iniFile.get("USER"), iniFile.get("PASSWORD"),
-				iniFile.get("DATA_SOURCE_TYPE"));
+				iniFile.get("DATA_SOURCE_TYPE"), iniFile.get("CREATE_SCHEMA"));
 //		MedlineAnalyserMain main = new MedlineAnalyserMain();
 //		main.analyseFolder("S:/Data/MEDLINE/Unprocessed/test");
 	}
@@ -67,8 +67,10 @@ public class MedlineAnalyserMain {
 		}
 	}
 
-	private void createDatabase(String server, String schema, String domain, String user, String password, String dateSourceType) {
+	private void createDatabase(String server, String schema, String domain, String user, String password, String dateSourceType, String createSchema) {
 		ConnectionWrapper connectionWrapper = new ConnectionWrapper(server, domain, user, password, new DbType(dateSourceType));
+		if (createSchema.toLowerCase().equals("true"))
+			connectionWrapper.createDatabase(schema);
 		connectionWrapper.use(schema);
 		System.out.println("Creating tables");
 		medlineCitationAnalyser.createTables(connectionWrapper);

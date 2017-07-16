@@ -140,8 +140,6 @@ public class MedlineCitationAnalyser {
 	
 	
 	private void analyseNode(Node node, String name, String tableName) {
-				 if (node.getNodeName().toLowerCase().equals("abstracttext"))
-				 System.out.println("asf");
 		// Add attributes:
 		NamedNodeMap attributes = node.getAttributes();
 		if (attributes != null)

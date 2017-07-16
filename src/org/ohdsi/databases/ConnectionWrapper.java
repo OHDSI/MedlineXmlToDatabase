@@ -84,6 +84,10 @@ public class ConnectionWrapper {
 			execute("USE " + database);
 	}
 
+	public void createDatabase(String database) {
+			execute("CREATE SCHEMA " + database);
+	}
+
 	/**
 	 * Execute the given SQL statement.
 	 * 
@@ -205,7 +209,7 @@ public class ConnectionWrapper {
 			sql.append("  " + fields.get(i) + " " + types.get(i));
 		}
 		if (primaryKey != null && primaryKey.size() != 0)
-			sql.append("\n  PRIMARY KEY (" + StringUtilities.join(primaryKey, ",") + ")\n");
+			sql.append(",\n  PRIMARY KEY (" + StringUtilities.join(primaryKey, ",") + ")\n");
 		sql.append(");\n\n");
 		execute(Abbreviator.abbreviate(sql.toString()));
 	}
