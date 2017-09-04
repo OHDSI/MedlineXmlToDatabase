@@ -113,13 +113,11 @@ public class DBConnector {
 			}
 		} else { // Do not use Windows integrated security
 			try {
-				Class.forName("net.sourceforge.jtds.jdbc.Driver");
+				Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
 			} catch (ClassNotFoundException e1) {
 				throw new RuntimeException("Cannot find JDBC driver. Make sure the file jtds-1.3.0.jar is in the path");
 			}
-
-			String url = "jdbc:jtds:sqlserver://" + server + ";ssl=required" + ((domain == null || domain.length() == 0) ? "" : ";domain=" + domain);
-
+			String url = "jdbc:sqlserver://" + server;
 			try {
 				return DriverManager.getConnection(url, user, password);
 			} catch (SQLException e1) {
