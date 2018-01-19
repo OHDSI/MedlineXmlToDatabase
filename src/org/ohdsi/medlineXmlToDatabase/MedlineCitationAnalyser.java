@@ -92,8 +92,25 @@ public class MedlineCitationAnalyser {
 				}
 			}
 			if (!table.equals(MEDLINE_CITATION)) {
-				table2Fields.get(table).add(table + ORDER_POSTFIX);
+				Set<String> fields = table2Fields.get(table);
+				fields.add(table + ORDER_POSTFIX);
 				field2VariableType.put(concatenate(table, table + ORDER_POSTFIX), new VariableType(true, 3));
+				if (fields.contains("PMID")) {
+					// A PMID field is encountered in a table that is not MEDLINE_CITATION. Need to rename to avoid collision with key
+					fields.add("Other_PMID");
+					fields.remove("PMID");
+					VariableType variableType = field2VariableType.get(concatenate(table, "PMID"));
+					field2VariableType.put(concatenate(table, "Other_PMID"), variableType);
+					field2VariableType.remove(concatenate(table, "PMID"));
+				}
+				if (fields.contains("PMID_Version")) {
+					// A PMID_Version field is encountered in a table that is not MEDLINE_CITATION. Need to rename to avoid collision with key
+					fields.add("Other_PMID_Version");
+					fields.remove("PMID_Version");
+					VariableType variableType = field2VariableType.get(concatenate(table, "PMID_Version"));
+					field2VariableType.put(concatenate(table, "Other_PMID_Version"), variableType);
+					field2VariableType.remove(concatenate(table, "OtPMID_Versionher_PMID"));
+				}
 			}
 			table2Fields.get(table).add("PMID");
 			field2VariableType.put(concatenate(table, "PMID"), new VariableType(true, 8));

@@ -36,7 +36,8 @@ import org.w3c.dom.NodeList;
  */
 public class MedlineCitationParser {
 	
-	private OneToManySet<String, String>	tables2Fields	= new OneToManySet<String, String>();
+	private static String					MEDLINE_CITATION	= "MedlineCitation";
+	private OneToManySet<String, String>	tables2Fields		= new OneToManySet<String, String>();
 	private String							pmid;
 	private String							pmid_version;
 	private ConnectionWrapper				connectionWrapper;
@@ -82,10 +83,10 @@ public class MedlineCitationParser {
 	
 	private void insertIntoDB(String table, Map<String, String> field2Value) {
 		removeFieldsNotInDb(table, field2Value);
-		//		Map<String, String> unAbbrField2Value = new HashMap<String, String>();
-		//		for (Map.Entry<String, String> entry : field2Value.entrySet())
-		//			unAbbrField2Value.put(Abbreviator.unAbbreviate(entry.getKey()), entry.getValue());
-		//		connectionWrapper.insertIntoTable(table, unAbbrField2Value);
+		// Map<String, String> unAbbrField2Value = new HashMap<String, String>();
+		// for (Map.Entry<String, String> entry : field2Value.entrySet())
+		// unAbbrField2Value.put(Abbreviator.unAbbreviate(entry.getKey()), entry.getValue());
+		// connectionWrapper.insertIntoTable(table, unAbbrField2Value);
 		connectionWrapper.insertIntoTable(table, field2Value);
 	}
 	
@@ -132,7 +133,7 @@ public class MedlineCitationParser {
 			}
 		
 		if (XmlTools.isTextNode(node)) {
-			field2Value.put(name.length() == 0 ? "Value" : name,  node.getTextContent());		
+			field2Value.put(name.length() == 0 ? "Value" : name, node.getTextContent());
 		} else {
 			// Add children
 			NodeList children = node.getChildNodes();
@@ -154,6 +155,18 @@ public class MedlineCitationParser {
 			}
 		}
 		if (tableRoot) { // Bottom level completed: write values to database
+			if (!tableName.equals(MEDLINE_CITATION)) {
+				if (field2Value.containsKey("PMID")) {
+					// A PMID field is encountered in a table that is not MEDLINE_CITATION. Need to rename to avoid collision with key
+					field2Value.put("Other_PMID", field2Value.get("PMID"));
+					field2Value.remove("PMID");
+				}
+				if (field2Value.containsKey("PMID_Version")) {
+					// A PMID_Version field is encountered in a table that is not MEDLINE_CITATION. Need to rename to avoid collision with key
+					field2Value.put("Other_PMID_Version", field2Value.get("PMID_Version"));
+					field2Value.remove("PMID_Version");
+				}
+			}
 			field2Value.putAll(keys);
 			insertIntoDB(tableName, field2Value);
 		}
