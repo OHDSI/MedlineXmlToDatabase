@@ -64,7 +64,14 @@ public class ConnectionWrapper {
 				statement = connection.createStatement();
 			}
 		} catch (SQLException e) {
+			System.err.println("Error: " + e.getMessage());
 			e.printStackTrace();
+			e = e.getNextException();
+			if (e != null) {
+				System.err.println("Error: " + e.getMessage());
+				e.printStackTrace();
+			}
+			throw new RuntimeException("Error executing batch data");
 		}
 	}
 
