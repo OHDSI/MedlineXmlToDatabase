@@ -17,6 +17,7 @@ package org.ohdsi.databases;
 
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -29,6 +30,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.management.RuntimeErrorException;
 
 import org.ohdsi.medlineXmlToDatabase.Abbreviator;
 import org.ohdsi.medlineXmlToDatabase.MedlineCitationAnalyser.VariableType;
@@ -46,12 +49,12 @@ public class ConnectionWrapper {
 	private DbType		dbType;
 	private boolean		batchMode	= false;
 	private Statement	statement;
-
+	
 	public ConnectionWrapper(String server, String domain, String user, String password, DbType dbType) {
 		this.connection = DBConnector.connect(server, domain, user, password, dbType);
 		this.dbType = dbType;
 	}
-
+	
 	public void setBatchMode(boolean batchMode) {
 		try {
 			if (this.batchMode && !batchMode) { // turn off batchmode
@@ -74,7 +77,7 @@ public class ConnectionWrapper {
 			throw new RuntimeException("Error executing batch data");
 		}
 	}
-
+	
 	/**
 	 * Switch the database to use.
 	 * 
@@ -90,11 +93,11 @@ public class ConnectionWrapper {
 		else
 			execute("USE " + database);
 	}
-
+	
 	public void createDatabase(String database) {
-			execute("CREATE SCHEMA " + database);
+		execute("CREATE SCHEMA " + database);
 	}
-
+	
 	/**
 	 * Execute the given SQL statement.
 	 * 
@@ -122,10 +125,10 @@ public class ConnectionWrapper {
 			throw new RuntimeException("Error inserting data");
 		}
 	}
-
+	
 	public void insertIntoTable(String table, Map<String, String> field2Value) {
 		List<String> fields = new ArrayList<String>(field2Value.keySet());
-
+		
 		StringBuilder sql = new StringBuilder();
 		sql.append("INSERT INTO ");
 		sql.append(Abbreviator.abbreviate(table));
@@ -138,7 +141,7 @@ public class ConnectionWrapper {
 				sql.append(",");
 			sql.append(Abbreviator.abbreviate(field));
 		}
-
+		
 		if (dbType.equals(DbType.MYSQL)) { // MySQL uses double quotes, escape using backslash
 			sql.append(") VALUES (\"");
 			first = true;
@@ -164,7 +167,7 @@ public class ConnectionWrapper {
 		}
 		execute(sql.toString());
 	}
-
+	
 	public void insertIntoTable(String tableName, List<Row> rows, boolean emptyStringToNull) {
 		List<String> columns = rows.get(0).getFieldNames();
 		String sql = "INSERT INTO " + tableName;
@@ -204,7 +207,7 @@ public class ConnectionWrapper {
 			}
 		}
 	}
-
+	
 	public void createTable(String table, List<String> fields, List<String> types, List<String> primaryKey) {
 		StringBuilder sql = new StringBuilder();
 		sql.append("CREATE TABLE " + table + " (\n");
@@ -221,7 +224,7 @@ public class ConnectionWrapper {
 		sql.append(");\n\n");
 		execute(Abbreviator.abbreviate(sql.toString()));
 	}
-
+	
 	public void createTableUsingVariableTypes(String table, List<String> fields, List<VariableType> variableTypes, List<String> primaryKey) {
 		List<String> types = new ArrayList<String>(variableTypes.size());
 		for (VariableType variableType : variableTypes) {
@@ -255,10 +258,10 @@ public class ConnectionWrapper {
 			} else
 				throw new RuntimeException("Unknown datasource type " + dbType);
 		}
-
+		
 		createTable(table, fields, types, primaryKey);
 	}
-
+	
 	public void close() {
 		try {
 			connection.close();
@@ -266,30 +269,30 @@ public class ConnectionWrapper {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public class QueryResult implements Iterable<Row> {
 		private String				sql;
-
+		
 		private List<DBRowIterator>	iterators	= new ArrayList<DBRowIterator>();
-
+		
 		public QueryResult(String sql) {
 			this.sql = sql;
 		}
-
+		
 		@Override
 		public Iterator<Row> iterator() {
 			DBRowIterator iterator = new DBRowIterator(sql);
 			iterators.add(iterator);
 			return iterator;
 		}
-
+		
 		public void close() {
 			for (DBRowIterator iterator : iterators) {
 				iterator.close();
 			}
 		}
 	}
-
+	
 	public List<String> getTableNames(String database) {
 		List<String> names = new ArrayList<String>();
 		String query = null;
@@ -305,12 +308,12 @@ public class ConnectionWrapper {
 		} else if (dbType.equals(DbType.POSTGRESQL)) {
 			query = "SELECT table_name FROM information_schema.tables WHERE table_schema = '" + database + "'";
 		}
-
+		
 		for (Row row : query(query))
 			names.add(row.get(row.getFieldNames().get(0)));
 		return names;
 	}
-
+	
 	public List<String> getFieldNames(String table) {
 		List<String> names = new ArrayList<String>();
 		if (dbType.equals(DbType.MSSQL)) {
@@ -324,22 +327,46 @@ public class ConnectionWrapper {
 				names.add(row.get("column_name"));
 		else
 			throw new RuntimeException("DB type not supported");
-
+		
 		return names;
 	}
-
+	
+	public List<FieldInfo> getFieldInfo(String table) {
+		List<FieldInfo> fieldInfos = new ArrayList<FieldInfo>();
+		try {
+			DatabaseMetaData metaData = connection.getMetaData();
+			ResultSet resultSet = metaData.getColumns(null, null, table, null);
+			while (resultSet.next()) {
+				FieldInfo fieldInfo = new FieldInfo();
+				fieldInfo.name = resultSet.getString("COLUMN_NAME");
+				fieldInfo.type = resultSet.getInt("DATA_TYPE");
+				fieldInfo.length = resultSet.getInt("COLUMN_SIZE");
+				fieldInfos.add(fieldInfo);
+			}
+		} catch (SQLException e) {
+			throw (new RuntimeException(e));
+		}
+		return fieldInfos;
+	}
+	
+	public class FieldInfo {
+		public int		type;
+		public String	name;
+		public int		length;
+	}
+	
 	private QueryResult query(String sql) {
 		return new QueryResult(sql);
 	}
-
+	
 	private class DBRowIterator implements Iterator<Row> {
-
+		
 		private ResultSet	resultSet;
-
+		
 		private boolean		hasNext;
-
+		
 		private Set<String>	columnNames	= new HashSet<String>();
-
+		
 		public DBRowIterator(String sql) {
 			try {
 				sql.trim();
@@ -354,7 +381,7 @@ public class ConnectionWrapper {
 				throw new RuntimeException(e);
 			}
 		}
-
+		
 		public void close() {
 			if (resultSet != null) {
 				try {
@@ -366,12 +393,12 @@ public class ConnectionWrapper {
 				hasNext = false;
 			}
 		}
-
+		
 		@Override
 		public boolean hasNext() {
 			return hasNext;
 		}
-
+		
 		@Override
 		public Row next() {
 			try {
@@ -379,14 +406,14 @@ public class ConnectionWrapper {
 				ResultSetMetaData metaData;
 				metaData = resultSet.getMetaData();
 				columnNames.clear();
-
+				
 				for (int i = 1; i < metaData.getColumnCount() + 1; i++) {
 					String columnName = metaData.getColumnName(i);
 					if (columnNames.add(columnName)) {
 						String value = resultSet.getString(i);
 						if (value == null)
 							value = "";
-
+						
 						row.add(columnName, value.replace(" 00:00:00", ""));
 					}
 				}
@@ -401,12 +428,12 @@ public class ConnectionWrapper {
 				throw new RuntimeException(e);
 			}
 		}
-
+		
 		@Override
 		public void remove() {
 		}
 	}
-
+	
 	public void setDateFormat() {
 		try {
 			Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);

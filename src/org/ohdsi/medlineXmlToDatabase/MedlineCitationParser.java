@@ -15,6 +15,7 @@
  ******************************************************************************/
 package org.ohdsi.medlineXmlToDatabase;
 
+import java.sql.Types;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -22,7 +23,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.ohdsi.databases.ConnectionWrapper;
+import org.ohdsi.databases.ConnectionWrapper.FieldInfo;
 import org.ohdsi.utilities.XmlTools;
+import org.ohdsi.utilities.collections.OneToManyList;
 import org.ohdsi.utilities.collections.OneToManySet;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -36,11 +39,12 @@ import org.w3c.dom.NodeList;
  */
 public class MedlineCitationParser {
 	
-	private static String					MEDLINE_CITATION	= "MedlineCitation";
-	private OneToManySet<String, String>	tables2Fields		= new OneToManySet<String, String>();
-	private String							pmid;
-	private String							pmid_version;
-	private ConnectionWrapper				connectionWrapper;
+	private static String						MEDLINE_CITATION	= "MedlineCitation";
+	private OneToManySet<String, String>		tables2Fields		= new OneToManySet<String, String>();
+	private OneToManyList<String, FieldInfo>	tables2FieldInfos	= new OneToManyList<String, FieldInfo>();
+	private String								pmid;
+	private String								pmid_version;
+	private ConnectionWrapper					connectionWrapper;
 	
 	public MedlineCitationParser(ConnectionWrapper connectionWrapper, String schema) {
 		this.connectionWrapper = connectionWrapper;
@@ -51,8 +55,10 @@ public class MedlineCitationParser {
 				tables.add(table);
 		}
 		for (String table : tables)
-			for (String field : connectionWrapper.getFieldNames(Abbreviator.abbreviate(table)))
-				tables2Fields.put(table, field);
+			for (FieldInfo fieldInfo : connectionWrapper.getFieldInfo(Abbreviator.abbreviate(table))) {
+				tables2Fields.put(table, fieldInfo.name);
+				tables2FieldInfos.put(table, fieldInfo);
+			}
 	}
 	
 	public void parseAndInjectIntoDB(Node citation) {
@@ -64,8 +70,12 @@ public class MedlineCitationParser {
 		keys.put("PMID", pmid);
 		keys.put("PMID_Version", pmid_version);
 		parseNode(citation, "", "MedlineCitation", new HashMap<String, String>(), true, keys);
-		
-		connectionWrapper.setBatchMode(false);
+		try {
+			connectionWrapper.setBatchMode(false);
+		} catch (Exception e) {
+			System.err.println("Problem inserting in to DB for PMID " + pmid + ": " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -83,10 +93,7 @@ public class MedlineCitationParser {
 	
 	private void insertIntoDB(String table, Map<String, String> field2Value) {
 		removeFieldsNotInDb(table, field2Value);
-		// Map<String, String> unAbbrField2Value = new HashMap<String, String>();
-		// for (Map.Entry<String, String> entry : field2Value.entrySet())
-		// unAbbrField2Value.put(Abbreviator.unAbbreviate(entry.getKey()), entry.getValue());
-		// connectionWrapper.insertIntoTable(table, unAbbrField2Value);
+		truncateFieldsToDbSize(table, field2Value);
 		connectionWrapper.insertIntoTable(table, field2Value);
 	}
 	
@@ -99,6 +106,28 @@ public class MedlineCitationParser {
 				System.err.println("Ignoring field " + field + " in table " + table
 						+ " because field is not in DB (meaning it wasn't encountered in the XML files before now)");
 				iterator.remove();
+			}
+		}
+	}
+	
+	private void truncateFieldsToDbSize(String table, Map<String, String> field2Value) {
+		for (FieldInfo fieldInfo : tables2FieldInfos.get(table.toLowerCase())) {
+			if (fieldInfo.type == Types.VARCHAR || fieldInfo.type == Types.CLOB) {
+				String name = null;
+				for (String field : field2Value.keySet())
+					if (Abbreviator.abbreviate(field).toLowerCase().equals(fieldInfo.name.toLowerCase())) {
+						name = field;
+						break;
+					}
+				if (name != null) {
+					String value = field2Value.get(name);
+					if (value.length() > fieldInfo.length) {
+						System.err.println("Truncating field " + fieldInfo.name + " in table " + table + " from " + value.length() + " to " + fieldInfo.length
+								+ " characters for PMID " + pmid);
+						value = value.substring(0, fieldInfo.length);
+						field2Value.put(name, value);
+					}
+				}
 			}
 		}
 	}

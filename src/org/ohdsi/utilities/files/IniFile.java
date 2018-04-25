@@ -23,7 +23,7 @@ public class IniFile {
 
 	public IniFile(String filename){
 		for (String line : new ReadTextFile(filename)){
-			int indexOfHash = line.indexOf('#');
+			int indexOfHash = line.indexOf("\t#");
 			if (indexOfHash != -1)
 				line = line.substring(0,indexOfHash);
 
