@@ -2,7 +2,20 @@
 <project default="create_run_jar" name="Create Runnable Jar for Project MedlineXmlToDatabase with libraries in sub-folder">
     <!--this file was created by Eclipse Runnable JAR Export Wizard-->
     <!--ANT 1.7 is required                                        -->
-	<property name="dist"  location="dist"/>
+    <property name="dist" location="dist"/>
+    <target name="clean" description="Delete all generated files">
+        <delete dir="bin"/>
+        <delete dir="${dist}/MedlineXmlToDatabase_lib"/>
+        <delete file="${dist}/MedlineXmlToDatabase.jar"/>
+    </target>
+    <target name="compile">
+       <mkdir dir="bin"/>
+       <javac srcdir="src" destdir="bin">
+         <classpath>
+           <pathelement path="lib/ojdbc6.jar"/>
+         </classpath>
+       </javac>
+    </target>
     <target name="create_run_jar">
         <jar destfile="${dist}/MedlineXmlToDatabase.jar">
             <manifest>
@@ -10,6 +23,7 @@
                 <attribute name="Class-Path" value=". MedlineXmlToDatabase_lib/dom4j-1.6.1.jar MedlineXmlToDatabase_lib/mysql-connector-java-5.1.30-bin.jar MedlineXmlToDatabase_lib/ojdbc5.jar MedlineXmlToDatabase_lib/ojdbc6.jar MedlineXmlToDatabase_lib/postgresql-9.3-1101.jdbc4.jar MedlineXmlToDatabase_lib/postgresql-9.3-1101.jdbc41.jar MedlineXmlToDatabase_lib/sqljdbc4.jar MedlineXmlToDatabase_lib/stax-api-1.0.1.jar MedlineXmlToDatabase_lib/xmlbeans-2.3.0.jar"/>
             </manifest>
             <fileset dir="bin"/>
+            <zipfileset dir="src/org/ohdsi/medlineXmlToDatabase" prefix="org/ohdsi/medlineXmlToDatabase" includes="*.csv"/>
         </jar>
         <delete dir="${dist}/MedlineXmlToDatabase_lib"/>
         <mkdir dir="${dist}/MedlineXmlToDatabase_lib"/>
