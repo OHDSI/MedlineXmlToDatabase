@@ -150,11 +150,20 @@ public class MedlineCitationAnalyser {
 			for (String field : sortedFields)
 				if (field.endsWith(ORDER_POSTFIX))
 					primaryKey.add(field);
-			
+				
 			connectionWrapper.createTableUsingVariableTypes(table, sortedFields, types, primaryKey);
 		}
 	}
 	
+	private boolean hasIllegalCharacter(String name) {
+		for (int i = 0; i < name.length(); i++) {
+			char ch = name.charAt(i);
+			if (!Character.isLetterOrDigit(ch) && ch != '_') {
+				return true;
+			}
+		}
+		return false;
+	}
 	
 	private void analyseNode(Node node, String name, String tableName) {
 		// Add attributes:
@@ -163,13 +172,21 @@ public class MedlineCitationAnalyser {
 			for (int i = 0; i < attributes.getLength(); i++) {
 				Node attribute = attributes.item(i);
 				String attributeName = concatenate(name, attribute.getNodeName());
-				table2Fields.get(tableName).add(attributeName);
-				updateVariableType(concatenate(tableName, attributeName), attribute.getNodeValue());
+				if (hasIllegalCharacter(attributeName))
+					System.err.println("Illegal character found in name '" + attributeName + "' in element '" + tableName + "'. Skipping field. ");
+				else {
+					table2Fields.get(tableName).add(attributeName);
+					updateVariableType(concatenate(tableName, attributeName), attribute.getNodeValue());
+				}
 			}
 		if (XmlTools.isTextNode(node)) {
-			table2Fields.get(tableName).add(name);
-			String value = node.getTextContent();
-			updateVariableType(concatenate(tableName, name), value);
+			if (hasIllegalCharacter(name))
+				System.err.println("Illegal character found in name '" + name + "' in element '" + tableName + "'. Skipping field. ");
+			else {
+				table2Fields.get(tableName).add(name);
+				String value = node.getTextContent();
+				updateVariableType(concatenate(tableName, name), value);
+			}
 		} else {
 			// Add children
 			NodeList children = node.getChildNodes();
@@ -194,6 +211,11 @@ public class MedlineCitationAnalyser {
 							childName = "";
 						}
 					}
+					if (hasIllegalCharacter(childName)) {
+						System.err.println("Illegal character found in name '" + childName + "' in element '" + tempTableName + "'. Skipping field. ");
+						continue;
+					}
+					
 					if (child.getNodeValue() != null && child.getNodeValue().trim().length() != 0) {
 						table2Fields.get(tempTableName).add(childName);
 						updateVariableType(concatenate(tempTableName, childName), child.getNodeValue());
