@@ -47,9 +47,9 @@ Getting Started
 
 3. Under the [Releases](https://github.com/OHDSI/MedlineXmlToDatabase/releases) tab, download MedlineXmlToDatabase*.zip, and unzip the file. Alternatively, you can download the source code and use the included Ant file to build the Jar file.
 
-4. From the command line, use ```java -jar MedlineXmlToDatabase.jar -analyse -ini <path to ini file>``` to create the database structure.
+4. From the command line, use ```java -Xmx10000m -jar MedlineXmlToDatabase.jar -analyse -ini <path to ini file>``` to create the database structure.
 
-5. From the command line, use ```java -jar MedlineXmlToDatabase.jar -parse -ini <path to ini file>``` to load the data from the xml files into the database.
+5. From the command line, use ```java -Xmx10000m -jar MedlineXmlToDatabase.jar -parse -ini <path to ini file>``` to load the data from the xml files into the database.
 
 Optionally, you can also include the MeSH database:
 
@@ -71,6 +71,7 @@ MedlineXmlToDatabase is licensed under Apache License 2.0
 Development
 ===========
 MedlineXmlToDatabase was developed in Eclipse. Contributions are welcome.
+
 ### Development status
 Beta testing
 
