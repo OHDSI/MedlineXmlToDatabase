@@ -94,9 +94,32 @@ public class MedlineCitationParser {
 	private void insertIntoDB(String table, Map<String, String> field2Value) {
 		removeFieldsNotInDb(table, field2Value);
 		truncateFieldsToDbSize(table, field2Value);
+		dropInvalidValues(table, field2Value);
 		connectionWrapper.insertIntoTable(table, field2Value);
 	}
 	
+	private void dropInvalidValues(String table, Map<String, String> field2Value) {
+		for (FieldInfo fieldInfo : tables2FieldInfos.get(table.toLowerCase())) {
+			if (fieldInfo.type == Types.INTEGER || fieldInfo.type == Types.BIGINT) {
+				String name = null;
+				for (String field : field2Value.keySet())
+					if (Abbreviator.abbreviate(field).toLowerCase().equals(fieldInfo.name.toLowerCase())) {
+						name = field;
+						break;
+					}
+				if (name != null) {
+					String value = field2Value.get(name);
+					try {
+						Integer.parseInt(value);
+					} catch (NumberFormatException e) {
+						System.err.println("Error parsing integer value '" + value + "' for field " + fieldInfo.name + " in table " + table + ". Setting to null.");
+						field2Value.remove(name);
+					}
+				}
+			}
+		}
+	}
+
 	private void removeFieldsNotInDb(String table, Map<String, String> field2Value) {
 		Set<String> fieldsInDb = tables2Fields.get(table.toLowerCase());
 		Iterator<Map.Entry<String, String>> iterator = field2Value.entrySet().iterator();
