@@ -83,19 +83,35 @@ public class PmidToDate {
 			
 			// Could be an update, so delete old record just to be sure:
 			connectionWrapper.execute("DELETE FROM pmid_to_date WHERE pmid = " + pmid + " AND pmid_version = " + pmid_version);
+			
+			Node articleDateNode = XmlTools.getChildByName(XmlTools.getChildByName(citation, "Article"), "ArticleDate");
+			String articleYearString; 
+			String articleMonthString; 
+			String articleDayString; 
+			if (articleDateNode == null) {
+				articleYearString = null;
+				articleMonthString = null;
+				articleDayString = null;
+			} else {
+				articleYearString = XmlTools.getChildByNameValue(articleDateNode, "Year");
+				articleMonthString = XmlTools.getChildByNameValue(articleDateNode, "Month");
+				articleDayString = XmlTools.getChildByNameValue(articleDateNode, "Day");
+			}
 			Node pubDateNode = XmlTools.getChildByName(
 					XmlTools.getChildByName(XmlTools.getChildByName(XmlTools.getChildByName(citation, "Article"), "Journal"), "JournalIssue"), "PubDate");
-			String yearString = XmlTools.getChildByNameValue(pubDateNode, "Year");
-			String monthString = XmlTools.getChildByNameValue(pubDateNode, "Month");
-			String dayString = XmlTools.getChildByNameValue(pubDateNode, "Day");
+			String pubYearString = XmlTools.getChildByNameValue(pubDateNode, "Year");
+			String pubMonthString = XmlTools.getChildByNameValue(pubDateNode, "Month");
+			String pubDayString = XmlTools.getChildByNameValue(pubDateNode, "Day");
 			String medlineString = XmlTools.getChildByNameValue(pubDateNode, "MedlineDate");
-			String date = parseDate(yearString, monthString, dayString, medlineString);
-//			if (pmid.equals("27904912"))
-//				System.out.println("asdfsadf");
+			String date = parseDate(articleYearString, articleMonthString, articleDayString, pubYearString, pubMonthString, pubDayString, medlineString);
+			// if (pmid.equals("27904912"))
+			// System.out.println("asdfsadf");
 			try {
 				date = dateFormat.format(dateFormat.parse(date));
 			} catch (ParseException e) {
-				System.err.println("Error parsing date with year = '"+yearString+"', month = '"+monthString+"', day = '"+dayString+"', medline date = '"+medlineString+"'");
+				System.err.println("Error parsing date with\n" + "article year = '" + articleYearString + "', month = '" + articleMonthString + "', day = '"
+						+ articleDayString + "\n" + "pub year = '" + pubYearString + "', month = '" + pubMonthString + "', day = '" + pubDayString + "\n"
+						+ "', medline date = '" + medlineString + "'");
 				date = null;
 			}
 			if (date == null) {
@@ -128,37 +144,61 @@ public class PmidToDate {
 		return result;
 	}
 	
-	private String parseDate(String yearString, String monthString, String dayString, String medlineString) {
+	private String parseDate(String articleYearString, String articleMonthString, String articleDayString, String pubYearString, String pubMonthString,
+			String pubDayString, String medlineString) {
 		String year = null;
-		if (yearString == null) {
-			if (medlineString == null)
-				return null;
-			
-			Matcher matcher = yearPattern.matcher(medlineString);
-			if (matcher.find())
-				year = matcher.group();
+		if (articleYearString == null) {
+			if (pubYearString == null) {
+				if (medlineString == null) {
+					return null;
+				} else {
+					Matcher matcher = yearPattern.matcher(medlineString);
+					if (matcher.find())
+						year = matcher.group();
+				}
+			} else {
+				year = pubYearString;
+			}
 		} else {
-			year = yearString;
+			year = articleYearString;
 		}
 		String month = null;
-		if (monthString == null) {
-			month = "1";
-			if (medlineString != null) {
-				for (int i = 0; i < months.size(); i++) {
-					if (medlineString.contains(months.get(i))) {
-						month = Integer.toString(i + 1);
-						break;
+		if (articleMonthString == null) {
+			if (pubMonthString == null) {
+				month = "1";
+				if (medlineString != null) {
+					for (int i = 0; i < months.size(); i++) {
+						if (medlineString.contains(months.get(i))) {
+							month = Integer.toString(i + 1);
+							break;
+						}
 					}
 				}
+			} else {
+				try {
+					month = Integer.toString(Integer.parseInt(pubMonthString));
+				} catch (NumberFormatException e) {
+					month = Integer.toString(months.indexOf(pubMonthString) + 1).toString();
+				}
 			}
+			
 		} else {
 			try {
-				month = Integer.toString(Integer.parseInt(monthString));
+				month = Integer.toString(Integer.parseInt(articleMonthString));
 			} catch (NumberFormatException e) {
-				month = Integer.toString(months.indexOf(monthString) + 1).toString();
+				month = Integer.toString(months.indexOf(articleMonthString) + 1).toString();
 			}
 		}
-		String day = dayString == null ? "1" : dayString;
+		String day;
+		if (articleDayString == null) {
+			if (pubDayString == null) {
+				day = "1";
+			} else {
+				day = pubDayString;
+			}
+		} else {
+			day = articleDayString;
+		}
 		return year + "-" + month + "-" + day;
 	}
 }
